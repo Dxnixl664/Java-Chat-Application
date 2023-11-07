@@ -1,16 +1,12 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- */
-
 package com.mycompany.chatclient;
 
-/**
- *
- * @author DCG11
- */
 public class ChatClient {
 
     public static void main(String[] args) {
-        System.out.println("Hello World!");
+        CClient client = new CClient();
+        client.startConnection("127.0.0.1", 6666);
+        String response = client.sendMessage("hello server");
+        System.out.println(response);
+        client.stopConnection();
     }
 }
