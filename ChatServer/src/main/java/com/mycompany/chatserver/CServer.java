@@ -2,29 +2,27 @@ package com.mycompany.chatserver;
 
 import java.io.*;
 import java.net.*;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class CServer {
     private ServerSocket serverSocket;
-    private Socket clientSocket;
-    private PrintWriter out;
-    private BufferedReader in;
+    private Set<ClientHandler> clientHandlers = new HashSet<>();
+    private ExecutorService pool = Executors.newCachedThreadPool();
     
     public void start(int port) {
         try {
             serverSocket = new ServerSocket(port);
             System.out.println("Server started, awaiting connections");
             
-            clientSocket = serverSocket.accept();
-            System.out.println("Client connected");
-            
-            out = new PrintWriter(clientSocket.getOutputStream(), true);
-            in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-            
-            String greeting = in.readLine();
-            if ("hello server".equals(greeting)) {
-                out.println("hello client");
-            } else {
-                out.println("unrecognized greeting");
+            while (true) {
+                Socket clientSocket = serverSocket.accept();
+                System.out.println("Client connected");
+                ClientHandler clientHandler = new ClientHandler(clientSocket, this);
+                clientHandlers.add(clientHandler);
+                pool.execute(clientHandler);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -33,11 +31,22 @@ public class CServer {
         }
     }
     
+    void broadcastMessage(String message) {
+        for (ClientHandler clientHandler : clientHandlers) {
+            clientHandler.sendMessage(message);
+        }
+    }
+    
+    void removeClientHandler(ClientHandler clientHandler) {
+        clientHandlers.remove(clientHandler);
+    }
+    
     public void stop() {
         try {
-            in.close();
-            out.close();
-            clientSocket.close();
+            for (ClientHandler clientHandler : clientHandlers) {
+                clientHandler.stop();
+            }
+            pool.shutdown();
             serverSocket.close();
         } catch (IOException e) {
             e.printStackTrace();
